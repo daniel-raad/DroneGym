@@ -127,3 +127,177 @@ button.danger { background: linear-gradient(180deg, var(--accent-2), #7a3aaa); c
 .episode-list .item { padding: 6px; border-bottom: 1px solid var(--border); cursor: pointer; }
 .episode-list .item:hover { background: var(--panel); }
 .episode-list .item.active { background: rgba(93, 184, 255, 0.12); }
+
+/* =====================================================================
+   PILOT STUDIO — the "train an agent → make it a character" flow
+   that sits at the top of the Gym sidebar.
+   ===================================================================== */
+.section.studio {
+  background: linear-gradient(180deg, rgba(93, 184, 255, 0.06), var(--panel-2));
+  border: 1px solid rgba(93, 184, 255, 0.22);
+  padding: 14px;
+}
+.studio-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+.studio-head h2 { font-size: 14px; text-transform: none; letter-spacing: 0; color: var(--text); }
+.studio-sub { font-size: 11px; color: var(--muted); }
+
+.studio-step {
+  border-top: 1px solid var(--border);
+  padding: 10px 0 8px;
+  opacity: 0.55;
+}
+.studio-step:first-of-type { border-top: none; padding-top: 0; }
+.studio-step.active { opacity: 1; }
+.studio-step.done { opacity: 0.85; }
+.studio-step-head {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.studio-step-n {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  text-align: center;
+  font-size: 11px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.studio-step.active .studio-step-n { background: var(--accent); color: #001022; border-color: var(--accent); }
+.studio-step.done .studio-step-n { background: rgba(89, 224, 139, 0.16); color: var(--success); border-color: rgba(89, 224, 139, 0.5); }
+.studio-step-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.studio-step-summary {
+  font-size: 11px;
+  color: var(--success);
+  font-family: ui-monospace, monospace;
+  white-space: nowrap;
+}
+.studio-step-body { margin-top: 8px; padding-left: 30px; }
+
+.studio-blurb { font-size: 12px; color: var(--muted); margin: 0 0 8px; line-height: 1.5; }
+
+.studio-input {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.studio-input:focus { outline: none; border-color: var(--accent); }
+
+.studio-pickers { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; }
+.studio-picker { display: flex; flex-direction: column; gap: 6px; }
+.studio-picker-label { font-size: 10px; letter-spacing: 1.5px; color: var(--muted); }
+.studio-face-row { display: flex; gap: 4px; flex-wrap: wrap; }
+.studio-face-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 18px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.studio-face-btn.on { border-color: var(--accent); background: rgba(93, 184, 255, 0.15); }
+
+.studio-hue-row { display: flex; gap: 6px; }
+.studio-hue-btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+.studio-hue-btn.on { border-color: var(--text); transform: scale(1.1); }
+
+.studio-ray-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.studio-ray-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 64px;
+  padding: 6px 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+}
+.studio-ray-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.studio-ray-btn.on { border-color: var(--accent); background: rgba(93, 184, 255, 0.15); }
+.studio-ray-n { font-size: 16px; font-weight: 600; }
+.studio-ray-sub { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; }
+
+.studio-cta {
+  width: auto;
+  margin-top: 0;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+.studio-cta.primary {
+  background: linear-gradient(180deg, #59e08b, #3dbf6c);
+  color: #001a08;
+}
+.studio-ghost {
+  width: auto;
+  margin-top: 0;
+  padding: 8px 14px;
+  font-size: 13px;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+.studio-ghost:hover { color: var(--text); border-color: var(--muted); }
+
+.studio-meta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+  font-family: ui-monospace, monospace;
+}
+.studio-meta code {
+  background: var(--panel);
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+.studio-graduation { display: flex; flex-direction: column; gap: 10px; }
+.studio-pilot-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: hsl(var(--hue), 60%, 15%);
+  border: 1px solid hsl(var(--hue), 60%, 40%);
+  border-radius: 8px;
+}
+.studio-preview-face { font-size: 32px; }
+.studio-preview-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.studio-preview-meta { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: ui-monospace, monospace; }
+
+.studio-err {
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.35);
+  border-radius: 6px;
+  color: var(--danger);
+  font-size: 12px;
+}

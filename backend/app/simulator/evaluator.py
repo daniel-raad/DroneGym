@@ -27,7 +27,8 @@ def run_episode(
     agent_label: str = "heuristic",
     episode_id: Optional[str] = None,
 ) -> EpisodeResponse:
-    sim = Simulator(env, seed=seed)
+    num_rays = int(getattr(agent, "num_rays", 3))
+    sim = Simulator(env, seed=seed, num_rays=num_rays)
     if max_steps and max_steps != env.max_steps:
         sim.env = env.model_copy(update={"max_steps": max_steps})
 

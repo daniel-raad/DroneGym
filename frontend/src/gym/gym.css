@@ -1,0 +1,746 @@
+/* ============================================================
+   DroneGym Workshop v2 — recipe-first, state-machine UI.
+   ============================================================ */
+
+.gym2 {
+  --bg: #0a0d14;
+  --bg2: #0c0f17;
+  --panel: #11141d;
+  --panel-2: #161a25;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --text: #e6e8f2;
+  --muted: rgba(230, 232, 242, 0.55);
+  --accent: #59e08b;
+  --accent-soft: rgba(89, 224, 139, 0.14);
+  --warn: #ffd166;
+  --err: #ff6b6b;
+  --info: #5ec8ff;
+
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* === Header ============================================================== */
+.gym2-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 24px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.gym2-brand h1 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 0.5px;
+}
+.gym2-tag {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.gym2-header-actions {
+  display: flex;
+  gap: 8px;
+}
+.gym2-link {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 3px;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+}
+.gym2-link:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Compact scorecard in the header */
+.gym2-score {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+}
+.gym2-score-label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  margin-right: 4px;
+}
+.gym2-score-pill {
+  display: grid;
+  grid-template-columns: 50px 80px 36px;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+.gym2-score-name {
+  color: var(--muted);
+}
+.gym2-score-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.gym2-score-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--warn), var(--accent));
+  transition: width 0.4s ease;
+}
+.gym2-score-pct {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.gym2-score.ready .gym2-score-name { color: var(--accent); }
+
+/* === Idle view =========================================================== */
+.gym2-idle {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+.gym2-hero h2 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: 0.3px;
+}
+.gym2-hero-sub {
+  color: var(--muted);
+  margin: 6px 0 0;
+  font-size: 13px;
+  max-width: 700px;
+  line-height: 1.6;
+}
+.gym2-hero-sub em {
+  color: var(--text);
+  font-style: normal;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 6px;
+  border-radius: 2px;
+}
+
+/* Recipe cards (RecipePicker) */
+.rp-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+@media (max-width: 1280px) {
+  .rp-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.rp-card {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 18px 18px 14px;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.rp-card:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  transform: translateY(-2px);
+}
+.rp-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+  background: linear-gradient(180deg, var(--accent-soft), var(--panel));
+}
+.rp-card:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.rp-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.rp-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+.rp-card-time {
+  font-size: 11px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.rp-card-blurb {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.rp-card-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+.rp-card-step {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  padding: 3px 8px;
+  border-radius: 2px;
+}
+.rp-card-arrow {
+  color: var(--muted);
+  margin: 0 4px;
+}
+.rp-card-expected {
+  margin-top: auto;
+  border-top: 1px dashed var(--border);
+  padding-top: 10px;
+}
+.rp-card-expected-label {
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.rp-card-expected-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.rp-card-expected-row.good   { color: var(--accent); }
+.rp-card-expected-row.maybe  { color: var(--warn); }
+.rp-card-expected-row.bad    { color: var(--muted); }
+.rp-card-check {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 22px;
+  height: 22px;
+  background: var(--accent);
+  color: #08130c;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+/* Launch row: name + train */
+.gym2-launch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 18px 22px;
+}
+.gym2-launch-step {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--muted);
+  letter-spacing: 0.3px;
+}
+.gym2-launch-mini {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.gym2-name {
+  background: var(--bg2);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  padding: 10px 14px;
+  border-radius: 4px;
+  width: 100%;
+  max-width: 320px;
+}
+.gym2-name:focus { outline: 1px solid var(--accent); }
+.gym2-faces { display: flex; gap: 4px; flex-wrap: wrap; }
+.gym2-faces.small .gym2-face { font-size: 14px; width: 24px; height: 24px; }
+.gym2-face {
+  background: transparent;
+  border: 1px solid transparent;
+  font-size: 18px;
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: inherit;
+}
+.gym2-face.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.gym2-hues { display: flex; gap: 5px; }
+.gym2-hue {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+.gym2-hue.on { border-color: var(--text); }
+
+.gym2-launch-train { display: flex; flex-direction: column; }
+.gym2-train-big {
+  background: var(--accent);
+  color: #08130c;
+  border: none;
+  padding: 16px 28px;
+  font: inherit;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 1.5px;
+  border-radius: 4px;
+  cursor: pointer;
+  align-self: flex-start;
+  margin-top: 4px;
+}
+.gym2-train-big:disabled {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.3);
+  cursor: not-allowed;
+}
+.gym2-launch-note {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* === Training view ======================================================= */
+.gym2-training {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+.gym2-live-wrap {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 18px;
+  min-height: 0;
+}
+
+/* TrainingStrip */
+.ts-row {
+  display: flex;
+  align-items: stretch;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  gap: 4px;
+}
+.ts-step {
+  flex: 1;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.ts-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.ts-step.active .ts-dot { background: var(--info); color: #03192b; }
+.ts-step.done .ts-dot { background: var(--accent); color: #08130c; }
+.ts-step.error .ts-dot { background: var(--err); color: #260a0a; }
+.ts-spin {
+  display: inline-block;
+  animation: ts-spin 1.2s linear infinite;
+}
+@keyframes ts-spin {
+  50% { opacity: 0.3; }
+}
+.ts-text { min-width: 0; }
+.ts-label { font-size: 12px; color: var(--text); }
+.ts-summary {
+  font-size: 11px;
+  color: var(--accent);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ts-error {
+  font-size: 11px;
+  color: var(--err);
+  margin-top: 2px;
+}
+.ts-connector {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 1px;
+  background: var(--border);
+}
+
+/* === Done view =========================================================== */
+.gym2-done {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+.gym2-done-left,
+.gym2-done-right {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+.gym2-done-left {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 18px;
+}
+
+/* DonePanel card */
+.dp-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 18px 20px;
+}
+.dp-card.ready { border-left-color: var(--accent); background: linear-gradient(180deg, var(--accent-soft), var(--panel)); }
+.dp-card.incomplete { border-left-color: var(--warn); }
+.dp-headline {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 700;
+}
+.dp-tick { color: var(--accent); font-size: 22px; }
+.dp-warn { color: var(--warn); font-size: 22px; }
+.dp-avg {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.dp-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.dp-primary {
+  background: var(--accent);
+  color: #08130c;
+  border: none;
+  padding: 12px 18px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 1px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.dp-card.incomplete .dp-primary {
+  background: var(--warn);
+  color: #261c00;
+}
+.dp-ghost {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  padding: 12px 16px;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 1px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* === Customize view ====================================================== */
+.gym2-custom {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.gym2-custom-head {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 20px;
+  align-items: center;
+}
+.gym2-custom-head h2 { margin: 0; font-size: 16px; }
+.gym2-custom-sub { color: var(--muted); font-size: 11px; margin: 4px 0 0; max-width: 520px; }
+.gym2-custom-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.gym2-custom-name .gym2-name { width: 180px; font-size: 13px; padding: 8px 12px; }
+.gym2-custom-name .gym2-train-big { padding: 10px 18px; font-size: 12px; margin-top: 0; }
+
+/* === Live panel (reused) ================================================ */
+.gym-live { display: flex; flex-direction: column; gap: 12px; height: 100%; }
+.gym-live-head { display: flex; flex-direction: column; gap: 6px; }
+.gym-live-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.gym-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+}
+.gym-live-dot.active {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  animation: gym-pulse 1.4s ease-in-out infinite;
+}
+@keyframes gym-pulse { 50% { opacity: 0.4; } }
+.gym-live-detail { color: var(--muted); font-size: 11px; }
+.gym-live-progress {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.gym-live-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.4s ease;
+}
+.gym-live-svg {
+  width: 100%;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  min-height: 0;
+  flex: 1;
+  max-height: 460px;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+.gym-live-room { fill: var(--bg2); }
+.gym-live-obstacle { fill: rgba(255, 209, 102, 0.55); stroke: var(--warn); stroke-width: 0.5; }
+.gym-live-start { fill: rgba(255, 255, 255, 0.6); }
+.gym-live-target { fill: rgba(89, 224, 139, 0.18); stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 2; }
+.gym-live-target.hit { fill: rgba(89, 224, 139, 0.6); }
+.gym-live-path { fill: none; stroke: var(--info); stroke-width: 1.5; opacity: 0.85; }
+.gym-live-drone { fill: var(--info); stroke: #fff; stroke-width: 1; }
+.gym-live-drone.success { fill: var(--accent); }
+.gym-live-drone.crash { fill: var(--err); }
+.gym-live-stamp { fill: var(--muted); font-size: 11px; font-family: inherit; }
+.gym-live-empty {
+  background: var(--bg2);
+  border: 1px dashed var(--border-strong);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 40px 24px;
+  font-size: 12px;
+  color: var(--muted);
+  flex: 1;
+  min-height: 200px;
+}
+.gym-live-empty-sub { margin-top: 8px; font-size: 11px; opacity: 0.7; max-width: 320px; line-height: 1.6; }
+
+.gym-live-curves { display: flex; flex-direction: column; gap: 8px; }
+.gym-live-curve {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+.gym-live-curve-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.gym-live-curve-val { color: var(--text); font-variant-numeric: tabular-nums; }
+.gym-live-curve-svg { width: 100%; height: 50px; }
+.gym-live-curve-path { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+
+/* === Plan composer (reused in Customize) ================================ */
+.gym-plan { display: flex; flex-direction: column; gap: 10px; }
+.gym-plan-stages { display: flex; flex-direction: column; gap: 10px; }
+.gym-stage {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 12px 14px;
+}
+.gym-stage-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.gym-stage-n {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+.gym-stage-title { font-weight: 600; }
+.gym-stage-arrow,
+.gym-stage-x {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+.gym-stage-arrow:hover,
+.gym-stage-x:hover { color: var(--text); border-color: var(--border-strong); }
+.gym-stage-knobs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 12px;
+}
+@media (max-width: 1100px) {
+  .gym-stage-knobs { grid-template-columns: repeat(2, 1fr); }
+}
+.gym-knob {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.gym-knob-label { color: var(--muted); flex: 1; }
+.gym-knob-input {
+  width: 90px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 5px 8px;
+  border-radius: 3px;
+  font: inherit;
+  font-size: 12px;
+  text-align: right;
+}
+.gym-knob-input:focus { outline: 1px solid var(--accent); }
+.gym-knob-bool .gym-knob-input { width: auto; }
+.gym-plan-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  border-top: 1px dashed var(--border);
+  padding-top: 12px;
+  align-items: center;
+}
+.gym-plan-add span { padding: 4px 6px; }
+.gym-plan-add button {
+  background: transparent;
+  border: 1px dashed var(--border-strong);
+  color: var(--muted);
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+.gym-plan-add button:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.gym-plan-add button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* === Diagnostics (reused in Done view) =================================== */
+.gym-diag {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 18px;
+}
+.gym-diag-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.gym-diag-count { font-size: 11px; color: var(--muted); }
+.gym-diag-empty { color: var(--muted); font-size: 12px; }
+.gym-diag-list { display: flex; flex-direction: column; gap: 8px; }
+.gym-diag-item {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+.gym-diag-item.warn { border-left-color: var(--warn); }
+.gym-diag-item.error { border-left-color: var(--err); }
+.gym-diag-item.info { border-left-color: var(--info); }
+.gym-diag-title { font-weight: 600; margin-bottom: 4px; }
+.gym-diag-sev { margin-right: 6px; }
+.gym-diag-item.warn .gym-diag-sev { color: var(--warn); }
+.gym-diag-item.error .gym-diag-sev { color: var(--err); }
+.gym-diag-detail { color: var(--muted); margin-bottom: 4px; line-height: 1.5; }
+.gym-diag-fix { color: var(--text); line-height: 1.5; }

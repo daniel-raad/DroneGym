@@ -22,6 +22,9 @@ type Props = GuidedState & {
   onCollectFlights: () => Promise<void>;
   onTrainNetwork: () => Promise<void>;
   onCompare: () => Promise<void>;
+  onManualFlight: () => Promise<void>;
+  manualActive: boolean;
+  tookManualFlight: boolean;
   llmAvailable: boolean;
   llmModel: string | null;
   includeLLM: boolean;
@@ -156,14 +159,31 @@ export function GuidedSteps(p: Props) {
         active={active === 0}
         done={stepDone[0]}
         doneChildren={
-          <button
-            className="secondary"
-            disabled={p.busy}
-            onClick={p.onBuildWorld}
-            style={{ marginTop: 4, padding: "4px 8px", fontSize: 11 }}
-          >
-            Try a different room ({p.difficulty})
-          </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+            <button
+              className="secondary"
+              disabled={p.busy}
+              onClick={p.onBuildWorld}
+              style={{ padding: "4px 8px", fontSize: 11, margin: 0 }}
+            >
+              Try a different room ({p.difficulty})
+            </button>
+            <button
+              className="secondary"
+              disabled={p.busy}
+              onClick={p.onManualFlight}
+              style={{
+                padding: "4px 8px",
+                fontSize: 11,
+                margin: 0,
+                background: p.tookManualFlight ? undefined : "rgba(93,184,255,0.15)",
+                color: p.tookManualFlight ? undefined : "var(--accent)",
+                fontWeight: p.tookManualFlight ? 400 : 600,
+              }}
+            >
+              ✈ {p.tookManualFlight ? "Pilot again" : "Try flying it yourself"}
+            </button>
+          </div>
         }
       >
         <label style={{ marginTop: 0 }}>Difficulty</label>

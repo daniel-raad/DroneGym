@@ -1,6 +1,12 @@
 """FastAPI app entrypoint."""
 from __future__ import annotations
 
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
 # Eagerly import torch and dynamo on the main thread. PyTorch 2.12 has a
 # lazy-init path in torch.optim that imports torch._dynamo only on first use;
 # triggering it from a worker thread (as FastAPI does) hits a partial-enum-

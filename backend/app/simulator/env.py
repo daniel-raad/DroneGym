@@ -79,7 +79,7 @@ def generate_environment(req: GenerateEnvRequest) -> EnvironmentConfig:
 class Simulator:
     """Stateless-ish simulator: drives one episode."""
 
-    def __init__(self, env: EnvironmentConfig, seed: Optional[int] = None):
+    def __init__(self, env: EnvironmentConfig, seed: Optional[int] = None, num_rays: int = 3):
         self.env = env
         self.rng = random.Random(seed if seed is not None else env.seed or 0)
         self.x, self.y = env.start
@@ -93,11 +93,22 @@ class Simulator:
         self.landed = False
         self.success = False
         self.timeout = False
+        self.num_rays = num_rays
+
+    def _build_obs(self) -> Observation:
+        return build_observation(
+            self.env,
+            self.x,
+            self.y,
+            self.heading,
+            self.battery,
+            self.step_idx,
+            self.rng,
+            num_rays=self.num_rays,
+        )
 
     def initial_observation(self) -> Observation:
-        return build_observation(
-            self.env, self.x, self.y, self.heading, self.battery, self.step_idx, self.rng
-        )
+        return self._build_obs()
 
     def step(self, action: str) -> tuple[Observation, float, bool, list[EventEntry]]:
         events: list[EventEntry] = []
@@ -127,7 +138,7 @@ class Simulator:
                 reward -= 50.0
                 events.append(EventEntry(step=self.step_idx, type="land_fail", detail=f"landed too far: {dist_to_target:.2f}"))
             self.step_idx += 1
-            obs = build_observation(self.env, self.x, self.y, self.heading, self.battery, self.step_idx, self.rng)
+            obs = self._build_obs()
             return obs, reward, self.done, events
 
         # Collision detection
@@ -141,7 +152,7 @@ class Simulator:
             self.y = max(self.env.drone_radius, min(self.env.room_height - self.env.drone_radius, new_y))
             self.heading = new_heading
             self.step_idx += 1
-            obs = build_observation(self.env, self.x, self.y, self.heading, self.battery, self.step_idx, self.rng)
+            obs = self._build_obs()
             return obs, reward, self.done, events
 
         if physics.point_in_obstacle(new_x, new_y, self.env.obstacles, self.env.drone_radius):
@@ -152,7 +163,7 @@ class Simulator:
             self.x, self.y = new_x, new_y
             self.heading = new_heading
             self.step_idx += 1
-            obs = build_observation(self.env, self.x, self.y, self.heading, self.battery, self.step_idx, self.rng)
+            obs = self._build_obs()
             return obs, reward, self.done, events
 
         # Commit move
@@ -185,7 +196,7 @@ class Simulator:
                 self.done = True
                 events.append(EventEntry(step=self.step_idx, type="timeout", detail=f"steps={self.step_idx}, batt={self.battery:.1f}"))
 
-        obs = build_observation(self.env, self.x, self.y, self.heading, self.battery, self.step_idx, self.rng)
+        obs = self._build_obs()
         return obs, reward, self.done, events
 
     def current_trajectory_point(self) -> TrajectoryPoint:

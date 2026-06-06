@@ -72,6 +72,9 @@ class Observation(BaseModel):
     right_distance: float
     battery: float
     step: int
+    # N evenly-spaced 360° rays starting at heading (ray[0] == front_distance).
+    # Empty for legacy episodes; populated when the active agent requests more rays.
+    rays: list[float] = Field(default_factory=list)
 
 
 class DroneState(BaseModel):
@@ -97,10 +100,12 @@ class EventEntry(BaseModel):
 
 
 class EpisodeRunRequest(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
     environment: EnvironmentConfig
     agent_type: Literal["heuristic", "random", "trained", "llm"] = "heuristic"
     max_steps: int = 200
     seed: Optional[int] = None
+    model_name: Optional[str] = None  # used when agent_type == "trained"
 
 
 class EpisodeSummary(BaseModel):
@@ -146,6 +151,7 @@ class GenerateDatasetRequest(BaseModel):
     dataset_name: str = "imitation_v1"
     difficulties: Optional[list[int]] = None  # if set, sample each episode's difficulty from this list
     append: bool = False  # if True, append to existing dataset rather than overwrite
+    num_rays: int = 3  # 3 = legacy front/left/right; 8/16/32 = lidar-style scan
 
 
 class GenerateDatasetResponse(BaseModel):
@@ -161,7 +167,13 @@ class TrainPolicyRequest(_BaseModel):
     batch_size: int = 64
     learning_rate: float = 1e-3
     hidden_size: int = 64
+    num_layers: int = 2
     model_name: str = "drone_policy_v1"
+    # If unset, BC trainer reads num_rays from the dataset sidecar (default 3).
+    num_rays: Optional[int] = None
+
+
+RLAlgorithm = Literal["a2c", "ppo"]
 
 
 class TrainRLApiRequest(_BaseModel):
@@ -169,6 +181,7 @@ class TrainRLApiRequest(_BaseModel):
     learning_rate: float = 3e-3
     gamma: float = 0.95
     hidden_size: int = 64
+    num_layers: int = 2
     difficulty: int = 1
     room_width: float = 10.0
     room_height: float = 10.0
@@ -177,6 +190,21 @@ class TrainRLApiRequest(_BaseModel):
     model_name: str = "drone_policy_rl"
     warm_start_from: str | None = None
     seed: int = 0
+    # If unset, RL trainer inherits num_rays from warm-start meta (default 3).
+    num_rays: Optional[int] = None
+    # Optimization knobs
+    batch_episodes: int = 8
+    entropy_coef: float = 0.02
+    value_coef: float = 0.5
+    # Algorithm: a2c (default) or ppo
+    algorithm: RLAlgorithm = "a2c"
+    ppo_clip: float = 0.2
+    ppo_epochs: int = 4
+    # Curriculum + randomization
+    curriculum_schedule: Optional[list[int]] = None  # cycle through these difficulties per episode
+    randomize_wind: float = 0.0  # max wind sampled uniformly per episode
+    randomize_noise: float = 0.0  # max sensor noise sampled uniformly per episode
+    randomize_obstacles: int = 0  # +/- N obstacles around base num_obstacles
 
 
 class TrainRLApiResponse(_BaseModel):
@@ -186,6 +214,58 @@ class TrainRLApiResponse(_BaseModel):
     avg_reward_last20: float
     reward_history: list[float]
     success_history: list[int]
+
+
+class DAggerRequest(_BaseModel):
+    """One round of DAgger: roll out the current model in fresh envs, relabel each
+    visited state with the heuristic teacher's action, append to the dataset, refit."""
+    model_name: str
+    dataset_name: str
+    rounds: int = 3
+    episodes_per_round: int = 50
+    difficulty: int = 1
+    room_width: float = 10.0
+    room_height: float = 10.0
+    num_obstacles: int = 3
+    max_steps: int = 200
+    # BC refit knobs
+    epochs: int = 5
+    batch_size: int = 64
+    learning_rate: float = 1e-3
+    hidden_size: int = 64
+    num_layers: int = 2
+    num_rays: Optional[int] = None
+    seed: int = 0
+
+
+class DAggerResponse(_BaseModel):
+    model_path: str
+    rounds: int
+    dataset_size: int
+    final_test_accuracy: float
+    per_round_accuracy: list[float]
+
+
+class EvaluateCoursesRequest(_BaseModel):
+    model_name: str
+    runs_per_course: int = 20  # uses each course's eval_seeds pool, cycles if needed
+
+
+class CourseResult(_BaseModel):
+    course_id: str
+    label: str
+    runs: int
+    success_rate: float
+    collision_rate: float
+    timeout_rate: float
+    avg_steps: float
+
+
+class EvaluateCoursesResponse(_BaseModel):
+    model_name: str
+    results: list[CourseResult]
+    # A pilot is race-ready if at least one course is >= READY_THRESHOLD.
+    race_ready: bool
 
 
 class DatasetInfo(BaseModel):
@@ -215,6 +295,13 @@ class ModelInfo(_BaseModel):
     smoothed_success: list[float] = Field(default_factory=list)
     sim_eval_success: float | None = None
     sim_eval_n: int | None = None
+    num_rays: int | None = None
+    hidden_size: int | None = None
+    num_layers: int | None = None
+    algorithm: str | None = None
+    # Per-course readiness (set by /api/training/evaluate-courses)
+    course_results: dict | None = None  # {course_id: {success_rate, runs, ...}}
+    race_ready: bool | None = None
 
 
 class SystemStatusResponse(BaseModel):
@@ -276,6 +363,18 @@ class EvaluateBaselineRequest(_BaseModel):
     num_episodes: int = 20
     difficulty: int = 1
     seed: int = 2000
+
+
+class PolicyInspectRequest(_BaseModel):
+    model_name: str = "drone_policy_v1"
+    observations: list[Observation]
+
+
+class PolicyInspectResponse(_BaseModel):
+    model_name: str
+    actions: list[str]  # the action list (in order) the probs columns refer to
+    probs: list[list[float]]  # [n_steps][n_actions]
+    argmax: list[str]  # per step
 
 
 class TrainPolicyResponse(_BaseModel):

@@ -4,3 +4,4 @@ pydantic==2.9.2
 numpy==2.1.2
 torch==2.4.1
 anthropic>=0.40.0
+python-dotenv>=1.0.0

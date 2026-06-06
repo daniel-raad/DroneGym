@@ -8,6 +8,7 @@ type Props = {
   overlayLLM?: EpisodeResponse | null;
   onStepChange?: (step: number) => void;
   showSensors?: boolean;
+  controlsMode?: "full" | "live";
 };
 
 const VIEW = 720;
@@ -19,6 +20,7 @@ export function ReplayCanvas({
   overlayLLM,
   onStepChange,
   showSensors = false,
+  controlsMode = "full",
 }: Props) {
   const room = episode?.environment ?? overlay?.environment ?? overlayLLM?.environment ?? env;
   const traj = episode?.trajectory ?? [];
@@ -37,6 +39,14 @@ export function ReplayCanvas({
     setStep(0);
     setPlaying(false);
   }, [episode?.episode_id, overlay?.episode_id, overlayLLM?.episode_id]);
+
+  // In live mode (manual flight), pin step to the end so the canvas always
+  // shows the latest position the user has flown to.
+  useEffect(() => {
+    if (controlsMode === "live" && totalSteps !== step) {
+      setStep(totalSteps);
+    }
+  }, [controlsMode, totalSteps, step]);
 
   useEffect(() => {
     onStepChange?.(step);
@@ -397,6 +407,7 @@ export function ReplayCanvas({
           )}
         </svg>
       </div>
+      {controlsMode === "full" && (
       <div className="controls">
         <button
           onClick={() => {
@@ -435,6 +446,7 @@ export function ReplayCanvas({
           step {step} / {totalSteps}
         </span>
       </div>
+      )}
     </>
   );
 }

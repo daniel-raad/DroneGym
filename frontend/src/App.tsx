@@ -12,6 +12,18 @@ import { GuidedSteps } from "./components/GuidedSteps";
 import { ExplainerCard } from "./components/ExplainerCard";
 import { ImprovementLab, type ScoreEntry } from "./components/ImprovementLab";
 import { SensorPanel } from "./components/SensorPanel";
+import { ManualFlightHud } from "./components/ManualFlightHud";
+import { NetworkInspector } from "./components/NetworkInspector";
+import { PilotStudio } from "./components/PilotStudio";
+import { useManualFlight } from "./useManualFlight";
+import type { PolicyInspectResponse } from "./api";
+
+type AppProps = {
+  // When the user graduates a pilot, App calls this so the shell can route
+  // back to the arcade with the pilot preselected. Optional so App still
+  // works standalone.
+  onGraduated?: (pilotId: string) => void;
+};
 
 type Diff = "easy" | "medium" | "hard";
 
@@ -45,7 +57,7 @@ const DIFF_PRESETS: Record<Diff, Partial<EnvForm>> = {
   hard: { difficulty: 6, num_obstacles: 8, room_width: 12, room_height: 12 },
 };
 
-export function App() {
+export function App({ onGraduated }: AppProps = {}) {
   const [diff, setDiff] = useState<Diff>("easy");
   const [form, setForm] = useState<EnvForm>(DEFAULT_FORM);
   const [env, setEnv] = useState<EnvironmentConfig | null>(null);
@@ -63,7 +75,16 @@ export function App() {
   const [baselineRate, setBaselineRate] = useState<number | null>(null);
   const [baselineDiff, setBaselineDiff] = useState<number | null>(null);
   const [includeLLM, setIncludeLLM] = useState(true);
+  const [manualMode, setManualMode] = useState(false);
+  const [tookManualFlight, setTookManualFlight] = useState(false);
+  const [inspectMain, setInspectMain] = useState<PolicyInspectResponse | null>(null);
+  const [inspectLoading, setInspectLoading] = useState(false);
   const busyRef = useRef(false);
+
+  const manual = useManualFlight(env, manualMode);
+  useEffect(() => {
+    if (manualMode && manual.drone) setTookManualFlight(true);
+  }, [manualMode, manual.drone]);
 
   const setBusyState = (b: boolean) => {
     busyRef.current = b;
@@ -99,6 +120,39 @@ export function App() {
     return () => clearInterval(id);
   }, [busy, refreshStatus]);
 
+  // Fetch action probabilities for the displayed flight whenever it changes
+  // and a trained BC/RL model exists. We pick observations from whichever
+  // episode is currently being shown (manual flight, teacher, or network).
+  const hasTrainedModelLocal = (status?.models ?? []).some(
+    (m) => m.method === "behavior_cloning" || m.method === "a2c" || m.method === "reinforce",
+  );
+  const displayedEpisode = manualMode ? manual.episode : episode;
+  const displayedEpId = displayedEpisode?.episode_id ?? null;
+  const displayedObsLen = displayedEpisode?.observations.length ?? 0;
+  useEffect(() => {
+    let cancelled = false;
+    if (!hasTrainedModelLocal || !displayedEpisode || displayedEpisode.observations.length === 0) {
+      setInspectMain(null);
+      return;
+    }
+    setInspectLoading(true);
+    api
+      .inspectPolicy(form.model_name, displayedEpisode.observations)
+      .then((r) => {
+        if (!cancelled) setInspectMain(r);
+      })
+      .catch(() => {
+        if (!cancelled) setInspectMain(null);
+      })
+      .finally(() => {
+        if (!cancelled) setInspectLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayedEpId, displayedObsLen, form.model_name, hasTrainedModelLocal]);
+
   const generateEnvRequest = (overrides: Partial<EnvForm> = {}) => ({
     difficulty: overrides.difficulty ?? form.difficulty,
     room_width: overrides.room_width ?? form.room_width,
@@ -128,12 +182,27 @@ export function App() {
       setEnv(e);
       setEpisode(null);
       clearOverlays();
+      setManualMode(false);
       append(`world built (${diff})`);
     } catch (e: any) {
       append(`env err: ${e.message}`, false);
     } finally {
       setBusyState(false);
     }
+  };
+
+  const onEnterManual = async () => {
+    if (!env) {
+      const e = await api.generateEnv(generateEnvRequest(DIFF_PRESETS[diff]));
+      setEnv(e);
+    }
+    setEpisode(null);
+    clearOverlays();
+    setManualMode(true);
+    append("manual flight: arrow keys to fly, Q/E to turn, Space to land");
+  };
+  const onExitManual = () => {
+    setManualMode(false);
   };
 
   const onDifficultyChange = (d: Diff) => {
@@ -146,6 +215,7 @@ export function App() {
     if (!useEnv) return;
     setBusyState(true);
     clearOverlays();
+    setManualMode(false);
     try {
       const ep = await api.runEpisode(useEnv, "heuristic", form.max_steps, form.seed);
       setEpisode(ep);
@@ -424,6 +494,16 @@ export function App() {
   );
   const hasComparison = overlay != null || overlayLLM != null;
 
+  // Action that was actually taken at the currently-displayed step (for inspector)
+  const displayedActions = displayedEpisode?.actions ?? [];
+  const takenAtStep =
+    displayedActions[Math.min(currentStep, displayedActions.length - 1)];
+  const inspectorFlightLabel = manualMode
+    ? "your flight"
+    : episode?.summary.agent_type === "heuristic"
+      ? "the teacher's flight"
+      : "this flight";
+
   return (
     <div className="app simple">
       <div className="header">
@@ -444,6 +524,14 @@ export function App() {
       </div>
 
       <div className="sidebar">
+        <PilotStudio
+          status={status}
+          onStatusChange={refreshStatus}
+          onGraduated={(pilotId) => {
+            append(`graduated ${pilotId} — opening arcade`);
+            onGraduated?.(pilotId);
+          }}
+        />
         <GuidedSteps
           difficulty={diff}
           busy={busy}
@@ -460,6 +548,9 @@ export function App() {
           onCollectFlights={onCollectFlights}
           onTrainNetwork={onTrainNetwork}
           onCompare={onRace}
+          onManualFlight={onEnterManual}
+          manualActive={manualMode}
+          tookManualFlight={tookManualFlight}
           llmAvailable={status?.llm_available ?? false}
           llmModel={status?.llm_model ?? null}
           includeLLM={includeLLM}
@@ -496,12 +587,22 @@ export function App() {
       </div>
       <div className="main">
         <ReplayCanvas
-          episode={episode}
+          episode={manualMode ? manual.episode : episode}
           env={env}
-          overlay={overlay}
-          overlayLLM={overlayLLM}
+          overlay={manualMode ? null : overlay}
+          overlayLLM={manualMode ? null : overlayLLM}
           onStepChange={setCurrentStep}
-          showSensors={!overlay && !overlayLLM}
+          showSensors={manualMode || (!overlay && !overlayLLM)}
+          controlsMode={manualMode ? "live" : "full"}
+        />
+        <ManualFlightHud
+          active={manualMode}
+          verdict={manual.verdict}
+          steps={manual.drone?.step ?? 0}
+          lastAction={manual.lastAction}
+          onActivate={onEnterManual}
+          onReset={manual.reset}
+          onExit={onExitManual}
         />
       </div>
       <div className="right">
@@ -512,8 +613,17 @@ export function App() {
           hasEnv={hasEnv}
           hasTrainedModel={hasTrainedModel}
         />
-        {episode && !overlay && !overlayLLM && (
-          <SensorPanel episode={episode} step={currentStep} />
+        {displayedEpisode && !overlay && !overlayLLM && (
+          <SensorPanel episode={displayedEpisode} step={currentStep} />
+        )}
+        {hasTrainedModel && displayedEpisode && (
+          <NetworkInspector
+            inspect={inspectMain}
+            loading={inspectLoading}
+            step={currentStep}
+            takenAction={takenAtStep}
+            flightLabel={inspectorFlightLabel}
+          />
         )}
         {episode && (
           <div className="section">
