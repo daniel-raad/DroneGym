@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   STAGE_LABELS,
   mkBC,
@@ -7,6 +8,13 @@ import {
   mkRL,
   type Stage,
 } from "./plan";
+import {
+  STAGE_META,
+  formatValue,
+  parseValue,
+  type KnobMeta,
+  type KnobUI,
+} from "./knobMeta";
 
 type Props = {
   stages: Stage[];
@@ -17,9 +25,9 @@ type Props = {
   onChange: (next: Stage[]) => void;
 };
 
-// Right-rail vertical stack. Each stage is a card with its own knobs.
-// Stages are independent — re-order, clone, delete freely. The runner walks
-// the list top-to-bottom.
+// Editable list of stages. Each stage card shows what it does, then a small
+// set of "primary" knobs each with a one-line "what this changes + impact on
+// pilot" line, then an Advanced expander with the rest.
 export function PlanComposer({
   stages,
   running,
@@ -52,54 +60,32 @@ export function PlanComposer({
   };
 
   return (
-    <div className="gym-plan">
-      <div className="gym-plan-stages">
+    <div className="pc-root">
+      <div className="pc-stages">
         {stages.map((s, i) => {
           const active = s.id === activeStageId;
           const summary = stageSummaries.get(s.id);
           const error = stageErrors.get(s.id);
           const done = !!summary && !active;
           return (
-            <div
+            <StageCard
               key={s.id}
-              className={`gym-stage ${active ? "active" : ""} ${done ? "done" : ""} ${error ? "error" : ""}`}
-            >
-              <div className="gym-stage-head">
-                <span className="gym-stage-n">{done ? "✓" : active ? "▶" : i + 1}</span>
-                <span className="gym-stage-title">{STAGE_LABELS[s.kind]}</span>
-                <span style={{ flex: 1 }} />
-                <button
-                  className="gym-stage-arrow"
-                  disabled={running}
-                  onClick={() => move(s.id, -1)}
-                  title="move up"
-                >
-                  ↑
-                </button>
-                <button
-                  className="gym-stage-arrow"
-                  disabled={running}
-                  onClick={() => move(s.id, 1)}
-                  title="move down"
-                >
-                  ↓
-                </button>
-                <button
-                  className="gym-stage-x"
-                  disabled={running}
-                  onClick={() => remove(s.id)}
-                >
-                  ✕
-                </button>
-              </div>
-              <StageBody stage={s} disabled={running} onPatch={(p) => update(s.id, p)} />
-              {summary && <div className="gym-stage-summary">{summary}</div>}
-              {error && <div className="gym-stage-err">⚠ {error}</div>}
-            </div>
+              stage={s}
+              index={i}
+              active={active}
+              done={done}
+              error={error}
+              summary={summary}
+              disabled={running}
+              onPatch={(p) => update(s.id, p)}
+              onMoveUp={() => move(s.id, -1)}
+              onMoveDown={() => move(s.id, 1)}
+              onRemove={() => remove(s.id)}
+            />
           );
         })}
       </div>
-      <div className="gym-plan-add">
+      <div className="pc-add">
         <span>Add stage:</span>
         {(["collect", "bc", "dagger", "rl", "eval"] as const).map((k) => (
           <button key={k} disabled={running} onClick={() => add(k)}>
@@ -111,300 +97,249 @@ export function PlanComposer({
   );
 }
 
-function StageBody({
+function StageCard({
   stage,
+  index,
+  active,
+  done,
+  error,
+  summary,
   disabled,
   onPatch,
+  onMoveUp,
+  onMoveDown,
+  onRemove,
 }: {
   stage: Stage;
+  index: number;
+  active: boolean;
+  done: boolean;
+  error: string | undefined;
+  summary: string | undefined;
   disabled: boolean;
   onPatch: (p: Partial<Stage>) => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onRemove: () => void;
 }) {
-  if (stage.kind === "collect") {
-    return (
-      <div className="gym-stage-knobs">
-        <Knob
-          label="episodes"
-          value={stage.num_episodes}
-          onChange={(v) => onPatch({ num_episodes: v } as Partial<Stage>)}
-          disabled={disabled}
-        />
-        <KnobText
-          label="difficulty mix"
-          value={stage.difficulties.join(",")}
-          onChange={(v) =>
-            onPatch({
-              difficulties: v
-                .split(",")
-                .map((s) => parseInt(s.trim(), 10))
-                .filter((n) => !isNaN(n)),
-            } as Partial<Stage>)
-          }
-          disabled={disabled}
-        />
-        <KnobSelect
-          label="rays"
-          value={String(stage.num_rays)}
-          options={["3", "8", "16", "32"]}
-          onChange={(v) => onPatch({ num_rays: parseInt(v, 10) } as Partial<Stage>)}
-          disabled={disabled}
-        />
-      </div>
-    );
-  }
-  if (stage.kind === "bc") {
-    return (
-      <div className="gym-stage-knobs">
-        <Knob
-          label="epochs"
-          value={stage.epochs}
-          onChange={(v) => onPatch({ epochs: v } as Partial<Stage>)}
-          disabled={disabled}
-        />
-        <Knob
-          label="hidden"
-          value={stage.hidden_size}
-          onChange={(v) => onPatch({ hidden_size: v } as Partial<Stage>)}
-          disabled={disabled}
-        />
-        <Knob
-          label="layers"
-          value={stage.num_layers}
-          onChange={(v) => onPatch({ num_layers: v } as Partial<Stage>)}
-          disabled={disabled}
-        />
-        <Knob
-          label="lr ×1e-4"
-          value={Math.round(stage.learning_rate * 1e4)}
-          onChange={(v) =>
-            onPatch({ learning_rate: Math.max(1, v) * 1e-4 } as Partial<Stage>)
-          }
-          disabled={disabled}
-        />
-      </div>
-    );
-  }
-  if (stage.kind === "dagger") {
-    return (
-      <div className="gym-stage-knobs">
-        <Knob
-          label="rounds"
-          value={stage.rounds}
-          onChange={(v) => onPatch({ rounds: v } as Partial<Stage>)}
-          disabled={disabled}
-        />
-        <Knob
-          label="eps/round"
-          value={stage.episodes_per_round}
-          onChange={(v) => onPatch({ episodes_per_round: v } as Partial<Stage>)}
-          disabled={disabled}
-        />
-        <Knob
-          label="refit epochs"
-          value={stage.epochs}
-          onChange={(v) => onPatch({ epochs: v } as Partial<Stage>)}
-          disabled={disabled}
-        />
-      </div>
-    );
-  }
-  if (stage.kind === "rl") {
-    return (
-      <div className="gym-stage-knobs">
-        <KnobSelect
-          label="algo"
-          value={stage.algorithm}
-          options={["a2c", "ppo"]}
-          onChange={(v) => onPatch({ algorithm: v as "a2c" | "ppo" } as Partial<Stage>)}
-          disabled={disabled}
-        />
-        <Knob
-          label="episodes"
-          value={stage.episodes}
-          onChange={(v) => onPatch({ episodes: v } as Partial<Stage>)}
-          disabled={disabled}
-        />
-        <Knob
-          label="entropy ×100"
-          value={Math.round(stage.entropy_coef * 100)}
-          onChange={(v) =>
-            onPatch({ entropy_coef: Math.max(0, v) / 100 } as Partial<Stage>)
-          }
-          disabled={disabled}
-        />
-        <Knob
-          label="hidden"
-          value={stage.hidden_size}
-          onChange={(v) => onPatch({ hidden_size: v } as Partial<Stage>)}
-          disabled={disabled}
-        />
-        <Knob
-          label="layers"
-          value={stage.num_layers}
-          onChange={(v) => onPatch({ num_layers: v } as Partial<Stage>)}
-          disabled={disabled}
-        />
-        <KnobText
-          label="curriculum"
-          value={stage.curriculum_schedule.join(",")}
-          onChange={(v) =>
-            onPatch({
-              curriculum_schedule: v
-                .split(",")
-                .map((s) => parseInt(s.trim(), 10))
-                .filter((n) => !isNaN(n)),
-            } as Partial<Stage>)
-          }
-          disabled={disabled}
-        />
-        <Knob
-          label="rand wind ×100"
-          value={Math.round(stage.randomize_wind * 100)}
-          onChange={(v) =>
-            onPatch({ randomize_wind: Math.max(0, v) / 100 } as Partial<Stage>)
-          }
-          disabled={disabled}
-        />
-        <Knob
-          label="rand noise ×100"
-          value={Math.round(stage.randomize_noise * 100)}
-          onChange={(v) =>
-            onPatch({ randomize_noise: Math.max(0, v) / 100 } as Partial<Stage>)
-          }
-          disabled={disabled}
-        />
-        <Knob
-          label="±obstacles"
-          value={stage.randomize_obstacles}
-          onChange={(v) =>
-            onPatch({ randomize_obstacles: Math.max(0, v) } as Partial<Stage>)
-          }
-          disabled={disabled}
-        />
-        <KnobBool
-          label="warm start"
-          value={stage.warm_start}
-          onChange={(v) => onPatch({ warm_start: v } as Partial<Stage>)}
-          disabled={disabled}
-        />
-      </div>
-    );
-  }
-  // eval
+  const meta = STAGE_META[stage.kind];
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const primary = meta.knobs.filter((k) => k.tone === "primary");
+  const advanced = meta.knobs.filter((k) => k.tone === "advanced");
+
   return (
-    <div className="gym-stage-knobs">
-      <Knob
-        label="runs/course"
-        value={stage.runs_per_course}
-        onChange={(v) => onPatch({ runs_per_course: v } as Partial<Stage>)}
-        disabled={disabled}
-      />
+    <div
+      className={`pc-stage ${active ? "active" : ""} ${done ? "done" : ""} ${error ? "error" : ""}`}
+    >
+      <div className="pc-stage-head">
+        <span className="pc-stage-n">{done ? "✓" : active ? "▶" : index + 1}</span>
+        <span className="pc-stage-title">{meta.title}</span>
+        <span style={{ flex: 1 }} />
+        <button
+          className="pc-iconbtn"
+          disabled={disabled}
+          onClick={onMoveUp}
+          title="move up"
+        >
+          ↑
+        </button>
+        <button
+          className="pc-iconbtn"
+          disabled={disabled}
+          onClick={onMoveDown}
+          title="move down"
+        >
+          ↓
+        </button>
+        <button
+          className="pc-iconbtn"
+          disabled={disabled}
+          onClick={onRemove}
+          title="remove"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="pc-stage-what">{meta.what}</div>
+
+      <div className="pc-knobs">
+        {primary.map((knob) => (
+          <KnobRow
+            key={knob.key}
+            knob={knob}
+            value={(stage as any)[knob.key]}
+            disabled={disabled}
+            onChange={(v) => onPatch({ [knob.key]: v } as Partial<Stage>)}
+          />
+        ))}
+      </div>
+
+      {advanced.length > 0 && (
+        <div className="pc-advanced">
+          <button
+            type="button"
+            className="pc-advanced-toggle"
+            onClick={() => setShowAdvanced((v) => !v)}
+          >
+            {showAdvanced ? "▾" : "▸"} Advanced ({advanced.length})
+          </button>
+          {showAdvanced && (
+            <div className="pc-knobs">
+              {advanced.map((knob) => (
+                <KnobRow
+                  key={knob.key}
+                  knob={knob}
+                  value={(stage as any)[knob.key]}
+                  disabled={disabled}
+                  onChange={(v) => onPatch({ [knob.key]: v } as Partial<Stage>)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {summary && <div className="pc-summary">{summary}</div>}
+      {error && <div className="pc-err">⚠ {error}</div>}
     </div>
   );
 }
 
-function Knob({
-  label,
+function KnobRow({
+  knob,
   value,
-  onChange,
   disabled,
+  onChange,
 }: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  disabled?: boolean;
+  knob: KnobMeta;
+  value: any;
+  disabled: boolean;
+  onChange: (v: any) => void;
 }) {
   return (
-    <label className="gym-knob">
-      <span className="gym-knob-label">{label}</span>
-      <input
-        type="number"
-        className="gym-knob-input"
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(parseInt(e.target.value || "0", 10))}
-      />
-    </label>
+    <div className="pc-knob">
+      <div className="pc-knob-row">
+        <span className="pc-knob-label">{knob.label}</span>
+        <KnobInput
+          ui={knob.ui}
+          value={value}
+          disabled={disabled}
+          onChange={onChange}
+        />
+      </div>
+      <div className="pc-knob-effect">{knob.effect}</div>
+    </div>
   );
 }
 
-function KnobText({
-  label,
+function KnobInput({
+  ui,
   value,
-  onChange,
   disabled,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <label className="gym-knob">
-      <span className="gym-knob-label">{label}</span>
-      <input
-        type="text"
-        className="gym-knob-input"
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </label>
-  );
-}
-
-function KnobSelect({
-  label,
-  value,
-  options,
   onChange,
-  disabled,
 }: {
-  label: string;
-  value: string;
-  options: string[];
-  onChange: (v: string) => void;
-  disabled?: boolean;
+  ui: KnobUI;
+  value: any;
+  disabled: boolean;
+  onChange: (v: any) => void;
 }) {
-  return (
-    <label className="gym-knob">
-      <span className="gym-knob-label">{label}</span>
+  if (ui.kind === "select-int") {
+    return (
       <select
-        className="gym-knob-input"
-        value={value}
+        className="pc-input"
+        value={String(value)}
         disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => onChange(parseInt(e.target.value, 10))}
       >
-        {options.map((o) => (
+        {ui.options.map((o) => (
           <option key={o} value={o}>
             {o}
           </option>
         ))}
       </select>
-    </label>
-  );
-}
-
-function KnobBool({
-  label,
-  value,
-  onChange,
-  disabled,
-}: {
-  label: string;
-  value: boolean;
-  onChange: (v: boolean) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <label className="gym-knob gym-knob-bool">
-      <span className="gym-knob-label">{label}</span>
+    );
+  }
+  if (ui.kind === "select-str") {
+    return (
+      <select
+        className="pc-input wide"
+        value={String(value)}
+        disabled={disabled}
+        onChange={(e) => onChange(isFinite(Number(e.target.value)) && e.target.value.match(/^-?\d/) ? Number(e.target.value) : e.target.value)}
+      >
+        {ui.options.map((o) => (
+          <option key={String(o.value)} value={String(o.value)}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    );
+  }
+  if (ui.kind === "bool") {
+    return (
       <input
         type="checkbox"
-        checked={value}
+        className="pc-checkbox"
+        checked={!!value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
       />
-    </label>
+    );
+  }
+  if (ui.kind === "csv-int") {
+    return (
+      <input
+        type="text"
+        className="pc-input wide"
+        value={formatValue(ui, value)}
+        disabled={disabled}
+        onChange={(e) => onChange(parseValue(ui, e.target.value, value))}
+        placeholder="1,2,3"
+      />
+    );
+  }
+  if (ui.kind === "pct") {
+    return (
+      <div className="pc-pct">
+        <input
+          type="number"
+          className="pc-input"
+          value={formatValue(ui, value)}
+          disabled={disabled}
+          min={0}
+          max={Math.round((ui.max ?? 1) * 100)}
+          step={1}
+          onChange={(e) => onChange(parseValue(ui, e.target.value, value))}
+        />
+        <span className="pc-suffix">%</span>
+      </div>
+    );
+  }
+  if (ui.kind === "float") {
+    return (
+      <input
+        type="number"
+        className="pc-input"
+        value={formatValue(ui, value)}
+        disabled={disabled}
+        min={ui.min}
+        max={ui.max}
+        step={ui.step ?? 0.01}
+        onChange={(e) => onChange(parseValue(ui, e.target.value, value))}
+      />
+    );
+  }
+  // int
+  return (
+    <input
+      type="number"
+      className="pc-input"
+      value={value}
+      disabled={disabled}
+      min={ui.min}
+      max={ui.max}
+      step={ui.step ?? 1}
+      onChange={(e) => onChange(parseValue(ui, e.target.value, value))}
+    />
   );
 }

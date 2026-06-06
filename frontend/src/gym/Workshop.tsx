@@ -16,6 +16,7 @@ import { PlanComposer } from "./PlanComposer";
 import { RecipePicker } from "./RecipePicker";
 import { TrainingStrip } from "./TrainingStrip";
 import { diagnose } from "./diagnostics";
+import { summarizePlan } from "./knobMeta";
 import { RECIPE_META, recipe, type RecipeName, type Stage } from "./plan";
 import { runPlan } from "./runPlan";
 import "./gym.css";
@@ -550,14 +551,15 @@ function CustomizeView({
   canTrain: boolean;
   onTrain: () => void;
 }) {
+  const summary = summarizePlan(stages);
   return (
     <main className="gym2-custom">
       <div className="gym2-custom-head">
         <div>
           <h2>Customize</h2>
           <p className="gym2-custom-sub">
-            Edit any knob. This view is for users who already know what they're
-            tuning — the recipes cover most cases.
+            Every knob has an explanation of what it changes and how it affects
+            your pilot. Use the Advanced toggle on each stage for less common knobs.
           </p>
         </div>
         <div className="gym2-custom-name">
@@ -599,6 +601,10 @@ function CustomizeView({
             ▶ Train
           </button>
         </div>
+      </div>
+      <div className="gym2-summary">
+        <div className="gym2-summary-label">This plan will…</div>
+        <div className="gym2-summary-text">{summary}</div>
       </div>
       <PlanComposer
         stages={stages}

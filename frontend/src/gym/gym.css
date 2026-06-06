@@ -616,25 +616,50 @@
 .gym-live-curve-svg { width: 100%; height: 50px; }
 .gym-live-curve-path { fill: none; stroke: var(--accent); stroke-width: 1.5; }
 
-/* === Plan composer (reused in Customize) ================================ */
-.gym-plan { display: flex; flex-direction: column; gap: 10px; }
-.gym-plan-stages { display: flex; flex-direction: column; gap: 10px; }
-.gym-stage {
+/* === Plan summary (top of Customize) ==================================== */
+.gym2-summary {
+  background: linear-gradient(180deg, var(--accent-soft), var(--panel));
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 14px 18px;
+}
+.gym2-summary-label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+.gym2-summary-text {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text);
+}
+
+/* === Plan composer v2 (Customize body) ================================== */
+.pc-root { display: flex; flex-direction: column; gap: 12px; }
+.pc-stages { display: flex; flex-direction: column; gap: 12px; }
+
+.pc-stage {
   background: var(--panel);
   border: 1px solid var(--border);
   border-left: 3px solid rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-  padding: 12px 14px;
+  border-radius: 5px;
+  padding: 14px 18px;
 }
-.gym-stage-head {
+.pc-stage.active { border-left-color: var(--info); }
+.pc-stage.done { border-left-color: var(--accent); }
+.pc-stage.error { border-left-color: var(--err); }
+
+.pc-stage-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: 10px;
+  font-size: 14px;
 }
-.gym-stage-n {
-  width: 20px;
-  height: 20px;
+.pc-stage-n {
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.08);
   display: inline-flex;
@@ -643,51 +668,121 @@
   font-size: 11px;
   font-weight: 700;
 }
-.gym-stage-title { font-weight: 600; }
-.gym-stage-arrow,
-.gym-stage-x {
+.pc-stage.done .pc-stage-n { background: var(--accent); color: #08130c; }
+.pc-stage.active .pc-stage-n { background: var(--info); color: #03192b; }
+.pc-stage-title { font-weight: 600; }
+.pc-stage-what {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 6px 0 14px;
+  padding-left: 32px;
+}
+
+.pc-iconbtn {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--muted);
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border-radius: 3px;
   cursor: pointer;
   font: inherit;
-  font-size: 11px;
-}
-.gym-stage-arrow:hover,
-.gym-stage-x:hover { color: var(--text); border-color: var(--border-strong); }
-.gym-stage-knobs {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-top: 12px;
-}
-@media (max-width: 1100px) {
-  .gym-stage-knobs { grid-template-columns: repeat(2, 1fr); }
-}
-.gym-knob {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   font-size: 12px;
 }
-.gym-knob-label { color: var(--muted); flex: 1; }
-.gym-knob-input {
-  width: 90px;
+.pc-iconbtn:hover:not(:disabled) { color: var(--text); border-color: var(--border-strong); }
+.pc-iconbtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.pc-knobs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px 24px;
+}
+@media (max-width: 1100px) {
+  .pc-knobs { grid-template-columns: 1fr; }
+}
+.pc-knob {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   background: var(--bg2);
   border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+.pc-knob-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pc-knob-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.pc-knob-effect {
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.pc-input {
+  background: var(--panel-2);
+  border: 1px solid var(--border-strong);
   color: var(--text);
   padding: 5px 8px;
   border-radius: 3px;
   font: inherit;
   font-size: 12px;
   text-align: right;
+  width: 90px;
 }
-.gym-knob-input:focus { outline: 1px solid var(--accent); }
-.gym-knob-bool .gym-knob-input { width: auto; }
-.gym-plan-add {
+.pc-input.wide { width: 170px; text-align: left; }
+.pc-input:focus { outline: 1px solid var(--accent); }
+.pc-checkbox { width: 16px; height: 16px; accent-color: var(--accent); }
+.pc-pct {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.pc-pct .pc-input { width: 60px; }
+.pc-suffix { color: var(--muted); font-size: 11px; }
+
+.pc-advanced {
+  margin-top: 14px;
+  border-top: 1px dashed var(--border);
+  padding-top: 12px;
+}
+.pc-advanced-toggle {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding: 0 0 8px;
+}
+.pc-advanced-toggle:hover { color: var(--text); }
+
+.pc-summary {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 5px 10px;
+  border-radius: 3px;
+}
+.pc-err {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--err);
+  background: rgba(255, 107, 107, 0.08);
+  padding: 5px 10px;
+  border-radius: 3px;
+}
+
+.pc-add {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -697,8 +792,8 @@
   padding-top: 12px;
   align-items: center;
 }
-.gym-plan-add span { padding: 4px 6px; }
-.gym-plan-add button {
+.pc-add span { padding: 4px 6px; }
+.pc-add button {
   background: transparent;
   border: 1px dashed var(--border-strong);
   color: var(--muted);
@@ -708,8 +803,8 @@
   font: inherit;
   font-size: 11px;
 }
-.gym-plan-add button:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
-.gym-plan-add button:disabled { opacity: 0.5; cursor: not-allowed; }
+.pc-add button:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.pc-add button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* === Diagnostics (reused in Done view) =================================== */
 .gym-diag {
