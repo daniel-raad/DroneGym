@@ -1,0 +1,12 @@
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.venv/
+.env
+.DS_Store
+data/runs/
+data/datasets/
+models/*.pt
+frontend/dist/
+.vscode/

@@ -1,0 +1,53 @@
+{
+  "model_name": "drone_policy_v1_practiced_practiced_practiced_practiced_practiced_practiced_practiced",
+  "trained_at": 1780699324.004388,
+  "method": "behavior_cloning",
+  "dataset_name": "imitation_v1",
+  "num_samples": 33223,
+  "epochs": 10,
+  "batch_size": 64,
+  "learning_rate": 0.001,
+  "hidden_size": 64,
+  "train_accuracy": 0.9632,
+  "test_accuracy": 0.9583,
+  "final_loss": 0.1015,
+  "loss_history": [
+    0.213,
+    0.1556,
+    0.1392,
+    0.1305,
+    0.1242,
+    0.1181,
+    0.1148,
+    0.1113,
+    0.1061,
+    0.1015
+  ],
+  "train_acc_history": [
+    0.9545,
+    0.9568,
+    0.9585,
+    0.9614,
+    0.9625,
+    0.962,
+    0.9614,
+    0.9591,
+    0.9588,
+    0.9632
+  ],
+  "test_acc_history": [
+    0.9494,
+    0.9509,
+    0.953,
+    0.9571,
+    0.9592,
+    0.9573,
+    0.9567,
+    0.9541,
+    0.954,
+    0.9583
+  ],
+  "sim_eval_success": 0.5,
+  "sim_eval_n": 20,
+  "sim_eval_difficulty": 1
+}

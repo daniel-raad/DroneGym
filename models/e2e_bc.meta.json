@@ -1,0 +1,38 @@
+{
+  "model_name": "e2e_bc",
+  "trained_at": 1780697700.9915142,
+  "method": "behavior_cloning",
+  "dataset_name": "e2e_test",
+  "num_samples": 1523,
+  "epochs": 5,
+  "batch_size": 64,
+  "learning_rate": 0.001,
+  "hidden_size": 64,
+  "train_accuracy": 0.9647,
+  "test_accuracy": 0.9639,
+  "final_loss": 0.2199,
+  "loss_history": [
+    1.3169,
+    0.336,
+    0.2547,
+    0.2331,
+    0.2199
+  ],
+  "train_acc_history": [
+    0.9647,
+    0.9647,
+    0.9647,
+    0.9647,
+    0.9647
+  ],
+  "test_acc_history": [
+    0.9639,
+    0.9639,
+    0.9639,
+    0.9639,
+    0.9639
+  ],
+  "sim_eval_success": 0.3,
+  "sim_eval_n": 10,
+  "sim_eval_difficulty": 1
+}
